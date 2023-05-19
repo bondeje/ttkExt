@@ -7,20 +7,14 @@ import tkinter.ttk as ttk
 
 def set_label(event, tab):
     row, col = table.get_row_column(event)
-    row -= 1
-    col -= 1
     tab[row,col+1] = f"set by button in ({row},{col})"
 
 def callback_delete_row(event, tab):
     row, col = table.get_row_column(event)
-    tab.del_row(row-1)
+    tab.del_row(row)
 
 a = tk.Tk()
 b = table.Table(a, {"buttons":"Button", "labels":"Label", "del":"Button"}, 2, True)
-for ir in range(b.n_rows):
-    #b[ir, 0] = f"Button. Row = {ir}"
-    b[ir, 1] = ""
-    b[ir, 2] = "Del row"
 b.set_column(0, command_cell=table.widget_callback_command(lambda event: set_label(event, b)),
              var_row=lambda x: f"Button. Row = {x}")
 b.set_column(1, var="")
