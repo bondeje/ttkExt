@@ -20,6 +20,8 @@ from matplotlib.figure import Figure
 class tkPlots(ttk.Frame):
     def __init__(self, master=None, *args, axes=None, width=None, height=None, variable=None, **kwargs):
         # set background color. GraphDisplay_tplvl is the current app TopLevel
+        self.title = kwargs.pop('title', None)
+        self.legend = kwargs.pop('legend', False)
         super().__init__(master)
         tl = None
         if master:
@@ -49,14 +51,20 @@ class tkPlots(ttk.Frame):
         self.draw()
         self.Canvas.get_tk_widget().pack(side = 'top')
         
-        tkagg.NavigationToolbar2Tk(self.Canvas, tl)
-    def draw(self):
-        self.Figure.clear()
+        tkagg.NavigationToolbar2Tk(self.Canvas, self)
+    def gca(self):
+        return self.Figure.gca()
+    def draw(self, *args, legend=False, **kwargs):
         ax = self.Figure.gca()
+        for artist in ax.lines + ax.collections:
+            artist.remove()
+        ax.set_prop_cycle(None) # TODO: add ability to set cycles in call
         for pl in self.variable:
-            args = pl[0]
-            kwargs = pl[1]
             ax.plot(*pl[0], **pl[1])
+        #if self.title:
+        #    ax.set_title(self.title)
+        if legend:
+            ax.legend()
         self.Canvas.draw()
 
 def tkPlotVar_value(*args, **kwargs):
@@ -64,12 +72,12 @@ def tkPlotVar_value(*args, **kwargs):
         
 class tkPlotVar(tk.BooleanVar):
     def __init__(self, master=None, value=None, name=None):
-        if not isinstance(value, list):
-            value = [value]
-        self.value_ = value
         super().__init__(master, value = False, name=name)
+        self.set(value)
     def __getitem__(self, key):
         return self.value_[key]
+    def __iter__(self):
+        return iter(self.value_)
     def __setitem__(self, key, value):
         self.value_[key] = value
         # so that triggers assigned to superclass are triggered
@@ -80,6 +88,8 @@ class tkPlotVar(tk.BooleanVar):
         val = super().get()
         return self.value_
     def set(self, value):
+        if not value:
+            value = []
         if not isinstance(value, list):
             value = [value]
         self.value_ = value
@@ -88,21 +98,28 @@ class tkPlotVar(tk.BooleanVar):
         return self.value_
     
 def setplotvar(var, index, val):
-    print("triggered setplotvar")
+    #print("triggered setplotvar")
     var[index] = val
 
-def update_plot(plot, *args):
-    plot.draw()
-    
 if __name__ == "__main__":
+    
+
+    def update_plot(plot, *args, **kwargs):
+        plot.draw(*args, **kwargs)
     tl = tk.Tk()
-    dvar = tkPlotVar_value([1, 2, 3, 4, 5], [1, 4, 9, 16, 25])
-    dvar2 = tkPlotVar_value([1, 2, 3, 4, 5], [-1, -4, -9, -16, -25])
-    dvar3 = tkPlotVar_value([1, 2, 3, 4, 5], [1, -4, 9, -16, 25])
+    dvar = tkPlotVar_value([1, 2, 3, 4, 5], [1, 4, 9, 16, 25], label='dvar')
+    dvar2 = tkPlotVar_value([1, 2, 3, 4, 5], [-1, -4, -9, -16, -25], label='dvar2')
+    dvar3 = tkPlotVar_value([1, 2, 3, 4, 5], [1, -4, 9, -16, 25], label='dvar3')
     plotvar = tkPlotVar(value=[dvar, dvar2])
     p = tkPlots(tl, variable=plotvar)
-    plotvar.trace_add('write', partial(update_plot, p))
+    ax = p.gca()
+    ax.set_xlabel("freqs")
+    ax.set_ylabel("amp")
+    ax.set_title("test2")
+    ax.legend()
+    plotvar.trace_add('write', partial(update_plot, p, legend=True))
     p.pack(side="top")
     bt = ttk.Button(tl, text="update data", command=partial(setplotvar, plotvar, 0, dvar3))
+    p.gca().legend()
     bt.pack(side="top")
     tl.mainloop()
